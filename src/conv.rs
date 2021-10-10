@@ -66,6 +66,11 @@ pub fn array3<T, A: Into<[T; 3]>>(value: A) -> [T; 3] {
 pub fn array4<T, A: Into<[T; 4]>>(value: A) -> [T; 4] {
     value.into()
 }
+/// Force a conversion into a 4-element array.
+#[inline]
+pub fn array5<T, A: Into<[T; 5]>>(value: A) -> [T; 5] {
+    value.into()
+}
 
 /// Force a conversion into a 2x2-element array.
 #[inline]
@@ -82,5 +87,11 @@ pub fn array3x3<T, A: Into<[[T; 3]; 3]>>(value: A) -> [[T; 3]; 3] {
 /// Force a conversion into a 4x4-element array.
 #[inline]
 pub fn array4x4<T, A: Into<[[T; 4]; 4]>>(value: A) -> [[T; 4]; 4] {
+    value.into()
+}
+
+/// Force a conversion into a 4x4-element array.
+#[inline]
+pub fn array5x5<T, A: Into<[[T; 5]; 5]>>(value: A) -> [[T; 5]; 5] {
     value.into()
 }

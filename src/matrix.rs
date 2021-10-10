@@ -31,10 +31,10 @@ use angle::Rad;
 use approx;
 use euler::Euler;
 use num::{BaseFloat, BaseNum};
-use point::{Point2, Point3};
+use point::{Point2, Point3, Point4};
 use quaternion::Quaternion;
 use transform::{Transform, Transform2, Transform3};
-use vector::{Vector2, Vector3, Vector4};
+use vector::{Vector2, Vector3, Vector4, Vector5};
 
 #[cfg(feature = "mint")]
 use mint;
@@ -82,6 +82,24 @@ pub struct Matrix4<S> {
     pub z: Vector4<S>,
     /// The fourth column of the matrix.
     pub w: Vector4<S>,
+}
+/// A 5 x 5, column major matrix
+///
+/// This type is marked as `#[repr(C)]`.
+#[repr(C)]
+#[derive(Copy, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct Matrix5<S> {
+    /// The first column of the matrix.
+    pub x: Vector5<S>,
+    /// The second column of the matrix.
+    pub y: Vector5<S>,
+    /// The third column of the matrix.
+    pub z: Vector5<S>,
+    /// The fourth column of the matrix.
+    pub w: Vector5<S>,
+    /// The fifth column of the matrix.
+    pub v: Vector5<S>,
 }
 
 impl<S> Matrix2<S> {
@@ -475,6 +493,248 @@ impl<S: BaseFloat> Matrix4<S> {
     /// Are all entries in the matrix finite.
     pub fn is_finite(&self) -> bool {
         self.w.is_finite() && self.x.is_finite() && self.y.is_finite() && self.z.is_finite()
+    }
+}
+
+impl<S> Matrix5<S> {
+    /// Create a new matrix, providing values for each index.
+    #[inline]
+    #[cfg_attr(rustfmt, rustfmt_skip)]
+    pub const fn new(
+        c0r0: S, c0r1: S, c0r2: S, c0r3: S, c0r4: S,
+        c1r0: S, c1r1: S, c1r2: S, c1r3: S, c1r4: S,
+        c2r0: S, c2r1: S, c2r2: S, c2r3: S, c2r4: S,
+        c3r0: S, c3r1: S, c3r2: S, c3r3: S, c3r4: S,
+        c4r0: S, c4r1: S, c4r2: S, c4r3: S, c4r4: S,
+    ) -> Matrix5<S>  {
+        Matrix5::from_cols(
+            Vector5::new(c0r0, c0r1, c0r2, c0r3, c0r4),
+            Vector5::new(c1r0, c1r1, c1r2, c1r3, c1r4),
+            Vector5::new(c2r0, c2r1, c2r2, c2r3, c2r4),
+            Vector5::new(c3r0, c3r1, c3r2, c3r3, c3r4),
+            Vector5::new(c4r0, c4r1, c4r2, c4r3, c4r4),
+        )
+    }
+
+    /// Create a new matrix, providing columns.
+    #[inline]
+    pub const fn from_cols(
+        c0: Vector5<S>,
+        c1: Vector5<S>,
+        c2: Vector5<S>,
+        c3: Vector5<S>,
+        c4: Vector5<S>,
+    ) -> Matrix5<S> {
+        Matrix5 {
+            x: c0,
+            y: c1,
+            z: c2,
+            w: c3,
+            v: c4,
+        }
+    }
+}
+
+impl<S: BaseFloat> Matrix5<S> {
+    /// Create a homogeneous transformation matrix from a translation vector.
+    #[inline]
+    pub fn from_translation(v: Vector4<S>) -> Matrix5<S> {
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        Matrix5::new(
+            S::one(), S::zero(), S::zero(), S::zero(),S::zero(),
+            S::zero(), S::one(), S::zero(), S::zero(),S::zero(),
+            S::zero(), S::zero(), S::one(), S::zero(),S::zero(),
+            S::zero(), S::zero(), S::zero(), S::one(),S::zero(),
+            v.x, v.y, v.z, v.w, S::one(),
+        )
+    }
+
+    /// Create a homogeneous transformation matrix from a scale value.
+    #[inline]
+    pub fn from_scale(value: S) -> Matrix5<S> {
+        Matrix5::from_nonuniform_scale(value, value, value, value)
+    }
+
+    /// Create a homogeneous transformation matrix from a set of scale values.
+    #[inline]
+    pub fn from_nonuniform_scale(x: S, y: S, z: S, w: S) -> Matrix5<S> {
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        Matrix5::new(
+            x, S::zero(), S::zero(), S::zero(),S::zero(),
+            S::zero(), y, S::zero(), S::zero(),S::zero(),
+            S::zero(), S::zero(), z, S::zero(),S::zero(),
+            S::zero(), S::zero(), S::zero(), w,S::zero(),
+            S::zero(), S::zero(), S::zero(), S::zero(),S::one(),
+        )
+    }
+    /*
+       /// Create a homogeneous transformation matrix that will cause a vector to point at
+       /// `dir`, using `up` for orientation.
+       pub fn look_to_rh(eye: Point4<S>, dir: Vector4<S>, up: Vector4<S>) -> Matrix5<S> {
+           let f = dir.normalize();
+           let s = f.cross(up).normalize();
+           let u = s.cross(f);
+
+           #[cfg_attr(rustfmt, rustfmt_skip)]
+           Matrix4::new(
+               s.x, u.x, -f.x, S::zero(),
+               s.y, u.y, -f.y, S::zero(),
+               s.z, u.z, -f.z, S::zero(),
+               -eye.dot(s), -eye.dot(u), eye.dot(f), S::one(),
+           )
+       }
+
+       /// Create a homogeneous transformation matrix that will cause a vector to point at
+       /// `dir`, using `up` for orientation.
+       pub fn look_to_lh(eye: Point3<S>, dir: Vector3<S>, up: Vector3<S>) -> Matrix4<S> {
+           Matrix4::look_to_rh(eye, -dir, up)
+       }
+
+       /// Create a homogeneous transformation matrix that will cause a vector to point at
+       /// `center`, using `up` for orientation.
+       #[deprecated = "Use Matrix4::look_at_rh"]
+       pub fn look_at(eye: Point3<S>, center: Point3<S>, up: Vector3<S>) -> Matrix4<S> {
+           Matrix4::look_at_rh(eye, center, up)
+       }
+
+       /// Create a homogeneous transformation matrix that will cause a vector to point at
+       /// `center`, using `up` for orientation.
+       pub fn look_at_rh(eye: Point3<S>, center: Point3<S>, up: Vector3<S>) -> Matrix4<S> {
+           Matrix4::look_to_rh(eye, center - eye, up)
+       }
+
+       /// Create a homogeneous transformation matrix that will cause a vector to point at
+       /// `center`, using `up` for orientation.
+       pub fn look_at_lh(eye: Point3<S>, center: Point3<S>, up: Vector3<S>) -> Matrix4<S> {
+           Matrix4::look_to_lh(eye, center - eye, up)
+       }
+    */
+
+    /// Create a homogeneous transformation matrix from a rotation around the `xy` axis (roll).
+    pub fn from_angle_xy<A: Into<Rad<S>>>(theta: A) -> Matrix5<S> {
+        // http://en.wikipedia.org/wiki/Rotation_matrix#Basic_rotations
+        let (s, c) = Rad::sin_cos(theta.into());
+
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        Matrix5::new(
+            c, s, S::zero(), S::zero(),S::zero(),
+            -s, c, S::zero(), S::zero(),S::zero(),
+            S::zero(), S::zero(), S::one(), S::zero(),S::zero(),
+            S::zero(), S::zero(), S::zero(), S::one(),S::zero(),
+            S::zero(), S::zero(), S::zero(), S::zero(),S::one(),
+        )
+    }
+
+    /// Create a homogeneous transformation matrix from a rotation around the `yz` axis (pitch).
+    pub fn from_angle_yz<A: Into<Rad<S>>>(theta: A) -> Matrix5<S> {
+        // http://en.wikipedia.org/wiki/Rotation_matrix#Basic_rotations
+        let (s, c) = Rad::sin_cos(theta.into());
+
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        Matrix5::new(
+            S::one(), S::zero(), S::zero(), S::zero(),S::zero(),
+            S::zero(), c, s, S::zero(),S::zero(),
+            S::zero(), -s, c, S::zero(),S::zero(),
+            S::zero(), S::zero(), S::zero(), S::one(),S::zero(),
+            S::zero(), S::zero(), S::zero(), S::zero(),S::one(),
+        )
+    }
+
+    /// Create a homogeneous transformation matrix from a rotation around the `xz` axis (yaw).
+    pub fn from_angle_xz<A: Into<Rad<S>>>(theta: A) -> Matrix5<S> {
+        // http://en.wikipedia.org/wiki/Rotation_matrix#Basic_rotations
+        let (s, c) = Rad::sin_cos(theta.into());
+
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        Matrix5::new(
+            c, S::zero(), -s, S::zero(),S::zero(),
+            S::zero(), S::one(), S::zero(), S::zero(),S::zero(),
+            s, S::zero(), c, S::zero(),S::zero(),
+            S::zero(), S::zero(), S::zero(), S::one(),S::zero(),
+            S::zero(), S::zero(), S::zero(), S::zero(),S::one(),
+        )
+    }
+
+    /// Create a homogeneous transformation matrix from a rotation around the `xw` axis (scuff1).
+    pub fn from_angle_xw<A: Into<Rad<S>>>(theta: A) -> Matrix5<S> {
+        // http://en.wikipedia.org/wiki/Rotation_matrix#Basic_rotations
+        let (s, c) = Rad::sin_cos(theta.into());
+
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        Matrix5::new(
+            c,  S::zero(), S::zero(), s,S::zero(),
+            S::zero(), S::one(), S::zero(), S::zero(),S::zero(),
+            S::zero(), S::zero(), S::zero(), S::zero(),S::zero(),
+            -s, S::zero(), S::zero(), c,S::zero(),
+            S::zero(), S::zero(), S::zero(), S::zero(),S::one(),
+        )
+    }
+
+    /// Create a homogeneous transformation matrix from a rotation around the `yw` axis (scuff2).
+    pub fn from_angle_yw<A: Into<Rad<S>>>(theta: A) -> Matrix5<S> {
+        // http://en.wikipedia.org/wiki/Rotation_matrix#Basic_rotations
+        let (s, c) = Rad::sin_cos(theta.into());
+
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        Matrix5::new(
+            S::zero(),  S::zero(), S::zero(), S::zero(),S::zero(),
+            S::zero(), c, S::zero(), s,S::zero(),
+            S::zero(), S::zero(), S::one(), S::zero(),S::zero(),
+            S::zero(), -s, S::zero(), c,S::zero(),
+            S::zero(), S::zero(), S::zero(), S::zero(),S::one(),
+        )
+    }
+
+    /// Create a homogeneous transformation matrix from a rotation around the `zw` axis (scuff3).
+    pub fn from_angle_zw<A: Into<Rad<S>>>(theta: A) -> Matrix5<S> {
+        // http://en.wikipedia.org/wiki/Rotation_matrix#Basic_rotations
+        let (s, c) = Rad::sin_cos(theta.into());
+
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        Matrix5::new(
+            S::zero(),  S::zero(), S::zero(), S::zero(),S::zero(),
+            S::zero(), S::one(), S::zero(), S::zero(),S::zero(),
+            S::zero(), S::zero(), c, s,S::zero(),
+            S::zero(), S::zero(), -s, c,S::zero(),
+            S::zero(), S::zero(), S::zero(), S::zero(),S::one(),
+        )
+    }
+    /*
+    /// Create a homogeneous transformation matrix from an angle around an arbitrary axis.
+    ///
+    /// The specified axis **must be normalized**, or it represents an invalid rotation.
+    pub fn from_axis_angle<A: Into<Rad<S>>>(axis: Vector3<S>, angle: A) -> Matrix4<S> {
+        let (s, c) = Rad::sin_cos(angle.into());
+        let _1subc = S::one() - c;
+
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        Matrix4::new(
+            _1subc * axis.x * axis.x + c,
+            _1subc * axis.x * axis.y + s * axis.z,
+            _1subc * axis.x * axis.z - s * axis.y,
+            S::zero(),
+
+            _1subc * axis.x * axis.y - s * axis.z,
+            _1subc * axis.y * axis.y + c,
+            _1subc * axis.y * axis.z + s * axis.x,
+            S::zero(),
+
+            _1subc * axis.x * axis.z + s * axis.y,
+            _1subc * axis.y * axis.z - s * axis.x,
+            _1subc * axis.z * axis.z + c,
+            S::zero(),
+
+            S::zero(), S::zero(), S::zero(), S::one(),
+        )
+    }
+    */
+    /// Are all entries in the matrix finite.
+    pub fn is_finite(&self) -> bool {
+        self.x.is_finite()
+            && self.y.is_finite()
+            && self.z.is_finite()
+            && self.w.is_finite()
+            && self.v.is_finite()
     }
 }
 

@@ -26,7 +26,7 @@ use structure::*;
 
 use approx;
 use num::{BaseFloat, BaseNum};
-use vector::{Vector1, Vector2, Vector3, Vector4};
+use vector::{Vector1, Vector2, Vector3, Vector4, Vector5};
 
 #[cfg(feature = "mint")]
 use mint;
@@ -64,6 +64,19 @@ pub struct Point3<S> {
     pub z: S,
 }
 
+/// A point in 4-dimensional space.
+///
+/// This type is marked as `#[repr(C)]`.
+#[repr(C)]
+#[derive(PartialEq, Eq, Copy, Clone, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct Point4<S> {
+    pub x: S,
+    pub y: S,
+    pub z: S,
+    pub w: S,
+}
+
 impl<S: BaseNum> Point3<S> {
     #[inline]
     pub fn from_homogeneous(v: Vector4<S>) -> Point3<S> {
@@ -74,6 +87,19 @@ impl<S: BaseNum> Point3<S> {
     #[inline]
     pub fn to_homogeneous(self) -> Vector4<S> {
         Vector4::new(self.x, self.y, self.z, S::one())
+    }
+}
+
+impl<S: BaseNum> Point4<S> {
+    #[inline]
+    pub fn from_homogeneous(v: Vector5<S>) -> Point4<S> {
+        let e = v.truncate() * (S::one() / v.v);
+        Point4::new(e.x, e.y, e.z, e.w) //FIXME
+    }
+
+    #[inline]
+    pub fn to_homogeneous(self) -> Vector5<S> {
+        Vector5::new(self.x, self.y, self.z, self.w, S::one())
     }
 }
 
@@ -342,31 +368,40 @@ macro_rules! impl_scalar_ops {
 impl_point!(Point1 { x }, Vector1, 1, point1);
 impl_point!(Point2 { x, y }, Vector2, 2, point2);
 impl_point!(Point3 { x, y, z }, Vector3, 3, point3);
+impl_point!(Point4 { x, y, z, w }, Vector4, 4, point4);
 
 impl<S: Copy> Point1<S> {
-    impl_swizzle_functions!(Point1, Point2, Point3, S, x);
+    impl_swizzle_functions!(Point1, Point2, Point3, Point4, S, x);
 }
 
 impl<S: Copy> Point2<S> {
-    impl_swizzle_functions!(Point1, Point2, Point3, S, xy);
+    impl_swizzle_functions!(Point1, Point2, Point3, Point4, S, xy);
 }
 
 impl<S: Copy> Point3<S> {
-    impl_swizzle_functions!(Point1, Point2, Point3, S, xyz);
+    impl_swizzle_functions!(Point1, Point2, Point3, Point4, S, xyz);
+}
+
+impl<S: Copy> Point4<S> {
+    impl_swizzle_functions!(Point1, Point2, Point3, Point4, S, xyzw);
 }
 
 impl_fixed_array_conversions!(Point1<S> { x: 0 }, 1);
 impl_fixed_array_conversions!(Point2<S> { x: 0, y: 1 }, 2);
 impl_fixed_array_conversions!(Point3<S> { x: 0, y: 1, z: 2 }, 3);
+impl_fixed_array_conversions!(Point4<S> { x: 0, y: 1, z: 2, w:3}, 4);
 
 impl_tuple_conversions!(Point1<S> { x }, (S,));
 impl_tuple_conversions!(Point2<S> { x, y }, (S, S));
 impl_tuple_conversions!(Point3<S> { x, y, z }, (S, S, S));
+impl_tuple_conversions!(Point4<S> { x, y, z, w }, (S, S, S, S));
 
 #[cfg(feature = "mint")]
 impl_mint_conversions!(Point2 { x, y }, Point2);
 #[cfg(feature = "mint")]
 impl_mint_conversions!(Point3 { x, y, z }, Point3);
+#[cfg(feature = "mint")]
+impl_mint_conversions!(Point4 { x, y, z, w }, Point4);
 
 impl<S: fmt::Debug> fmt::Debug for Point1<S> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -386,6 +421,13 @@ impl<S: fmt::Debug> fmt::Debug for Point3<S> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Point3 ")?;
         <[S; 3] as fmt::Debug>::fmt(self.as_ref(), f)
+    }
+}
+
+impl<S: fmt::Debug> fmt::Debug for Point4<S> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Point4 ")?;
+        <[S; 4] as fmt::Debug>::fmt(self.as_ref(), f)
     }
 }
 
