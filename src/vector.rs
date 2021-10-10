@@ -89,6 +89,25 @@ pub struct Vector4<S> {
     pub w: S,
 }
 
+/// A 5-dimensional vector.
+///
+/// This type is marked as `#[repr(C)]`.
+#[repr(C)]
+#[derive(PartialEq, Eq, Copy, Clone, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct Vector5<S> {
+    /// The x component of the vector.
+    pub x: S,
+    /// The y component of the vector.
+    pub y: S,
+    /// The z component of the vector.
+    pub z: S,
+    /// The w component of the vector.
+    pub w: S,
+    /// The v component of the vector.
+    pub v: S,
+}
+
 // Utility macro for generating associated functions for the vectors
 macro_rules! impl_vector {
     ($VectorN:ident { $($field:ident),+ }, $n:expr, $constructor:ident) => {
@@ -375,16 +394,19 @@ impl_vector!(Vector1 { x }, 1, vec1);
 impl_vector!(Vector2 { x, y }, 2, vec2);
 impl_vector!(Vector3 { x, y, z }, 3, vec3);
 impl_vector!(Vector4 { x, y, z, w }, 4, vec4);
+impl_vector!(Vector5 { x, y, z, w, v }, 5, vec5);
 
 impl_fixed_array_conversions!(Vector1<S> { x: 0 }, 1);
 impl_fixed_array_conversions!(Vector2<S> { x: 0, y: 1 }, 2);
 impl_fixed_array_conversions!(Vector3<S> { x: 0, y: 1, z: 2 }, 3);
 impl_fixed_array_conversions!(Vector4<S> { x: 0, y: 1, z: 2, w: 3 }, 4);
+impl_fixed_array_conversions!(Vector5<S> { x: 0, y: 1, z: 2, w: 3, v: 4 }, 5);
 
 impl_tuple_conversions!(Vector1<S> { x }, (S,));
 impl_tuple_conversions!(Vector2<S> { x, y }, (S, S));
 impl_tuple_conversions!(Vector3<S> { x, y, z }, (S, S, S));
 impl_tuple_conversions!(Vector4<S> { x, y, z, w }, (S, S, S, S));
+impl_tuple_conversions!(Vector5<S> { x, y, z, w, v}, (S, S, S, S, S));
 
 impl<S: BaseNum> Vector1<S> {
     /// A unit vector in the `x` direction.
@@ -393,7 +415,7 @@ impl<S: BaseNum> Vector1<S> {
         Vector1::new(S::one())
     }
 
-    impl_swizzle_functions!(Vector1, Vector2, Vector3, Vector4, S, x);
+    impl_swizzle_functions!(Vector1, Vector2, Vector3, Vector4, Vector5, S, x);
 }
 
 impl<S: BaseNum> Vector2<S> {
@@ -422,7 +444,7 @@ impl<S: BaseNum> Vector2<S> {
         Vector3::new(self.x, self.y, z)
     }
 
-    impl_swizzle_functions!(Vector1, Vector2, Vector3, Vector4, S, xy);
+    impl_swizzle_functions!(Vector1, Vector2, Vector3, Vector4, Vector5, S, xy);
 }
 
 impl<S: BaseNum> Vector3<S> {
@@ -467,7 +489,7 @@ impl<S: BaseNum> Vector3<S> {
         Vector2::new(self.x, self.y)
     }
 
-    impl_swizzle_functions!(Vector1, Vector2, Vector3, Vector4, S, xyz);
+    impl_swizzle_functions!(Vector1, Vector2, Vector3, Vector4, Vector5, S, xyz);
 }
 
 impl<S: BaseNum> Vector4<S> {
@@ -513,7 +535,59 @@ impl<S: BaseNum> Vector4<S> {
         }
     }
 
-    impl_swizzle_functions!(Vector1, Vector2, Vector3, Vector4, S, xyzw);
+    impl_swizzle_functions!(Vector1, Vector2, Vector3, Vector4, Vector5, S, xyzw);
+}
+
+impl<S: BaseNum> Vector5<S> {
+    /// A unit vector in the `x` direction.
+    #[inline]
+    pub fn unit_x() -> Vector5<S> {
+        Vector5::new(S::one(), S::zero(), S::zero(), S::zero(), S::zero())
+    }
+
+    /// A unit vector in the `y` direction.
+    #[inline]
+    pub fn unit_y() -> Vector5<S> {
+        Vector5::new(S::zero(), S::one(), S::zero(), S::zero(), S::zero())
+    }
+
+    /// A unit vector in the `z` direction.
+    #[inline]
+    pub fn unit_z() -> Vector5<S> {
+        Vector5::new(S::zero(), S::zero(), S::one(), S::zero(), S::zero())
+    }
+
+    /// A unit vector in the `w` direction.
+    #[inline]
+    pub fn unit_w() -> Vector5<S> {
+        Vector5::new(S::zero(), S::zero(), S::zero(), S::one(), S::zero())
+    }
+    /// A unit vector in the `v` direction.
+    #[inline]
+    pub fn unit_v() -> Vector5<S> {
+        Vector5::new(S::zero(), S::zero(), S::zero(), S::zero(), S::one())
+    }
+
+    /// Create a `Vector4`, dropping the `v` value.
+    #[inline]
+    pub fn truncate(self) -> Vector4<S> {
+        Vector4::new(self.x, self.y, self.z, self.w)
+    }
+
+    /// Create a `Vector4`, dropping the nth element.
+    #[inline]
+    pub fn truncate_n(&self, n: isize) -> Vector4<S> {
+        match n {
+            0 => Vector4::new(self.y, self.z, self.w, self.v),
+            1 => Vector4::new(self.x, self.z, self.w, self.v),
+            2 => Vector4::new(self.x, self.y, self.w, self.v),
+            3 => Vector4::new(self.x, self.y, self.z, self.v),
+            4 => Vector4::new(self.x, self.y, self.z, self.w),
+            _ => panic!("{:?} is out of range", n),
+        }
+    }
+
+    impl_swizzle_functions!(Vector1, Vector2, Vector3, Vector4, Vector5, S, xyzw);
 }
 
 /// Dot product of two vectors.
@@ -568,6 +642,12 @@ impl<S: BaseNum> InnerSpace for Vector4<S> {
         Vector4::mul_element_wise(self, other).sum()
     }
 }
+impl<S: BaseNum> InnerSpace for Vector5<S> {
+    #[inline]
+    fn dot(self, other: Vector5<S>) -> S {
+        Vector5::mul_element_wise(self, other).sum()
+    }
+}
 
 impl<S: fmt::Debug> fmt::Debug for Vector1<S> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -596,6 +676,12 @@ impl<S: fmt::Debug> fmt::Debug for Vector4<S> {
         <[S; 4] as fmt::Debug>::fmt(self.as_ref(), f)
     }
 }
+impl<S: fmt::Debug> fmt::Debug for Vector5<S> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Vector5 ")?;
+        <[S; 5] as fmt::Debug>::fmt(self.as_ref(), f)
+    }
+}
 
 #[cfg(feature = "mint")]
 impl_mint_conversions!(Vector2 { x, y }, Vector2);
@@ -603,6 +689,8 @@ impl_mint_conversions!(Vector2 { x, y }, Vector2);
 impl_mint_conversions!(Vector3 { x, y, z }, Vector3);
 #[cfg(feature = "mint")]
 impl_mint_conversions!(Vector4 { x, y, z, w }, Vector4);
+#[cfg(feature = "mint")]
+impl_mint_conversions!(Vector5 { x, y, z, w, v }, Vector5);
 
 #[cfg(test)]
 mod tests {

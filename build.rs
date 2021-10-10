@@ -87,13 +87,33 @@ macro_rules! impl_swizzle_functions {{
     ($vector_type1:ident, $vector_type2:ident, $vector_type3:ident, $vector_type4:ident, $S:ident, xyzw) => {{
 {xyzw4}
     }};
+    ($vector_type1:ident, $vector_type2:ident, $vector_type3:ident, $vector_type4:ident, $vector_type5:ident, $S:ident, x) => {{
+{x5}
+    }};
+    ($vector_type1:ident, $vector_type2:ident, $vector_type3:ident, $vector_type4:ident, $vector_type5:ident, $S:ident, xy) => {{
+{xy5}
+    }};
+    ($vector_type1:ident, $vector_type2:ident, $vector_type3:ident, $vector_type4:ident, $vector_type5:ident, $S:ident, xyz) => {{
+{xyz5}
+    }};
+    ($vector_type1:ident, $vector_type2:ident, $vector_type3:ident, $vector_type4:ident, $vector_type5:ident, $S:ident, xyzw) => {{
+{xyzw5}
+    }};
+    ($vector_type1:ident, $vector_type2:ident, $vector_type3:ident, $vector_type4:ident, $vector_type5:ident, $S:ident, xyzwv) => {{
+{xyzwv5}
+    }};
 }}", x3 = gen_swizzle_functions("x", 3),
      xy3 = gen_swizzle_functions("xy", 3),
      xyz3 = gen_swizzle_functions("xyz", 3),
      x4 = gen_swizzle_functions("x", 4),
      xy4 = gen_swizzle_functions("xy", 4),
      xyz4 = gen_swizzle_functions("xyz", 4),
-     xyzw4 = gen_swizzle_functions("xyzw", 4));
+     xyzw4 = gen_swizzle_functions("xyzw", 4),
+     x5 = gen_swizzle_functions("x",5),
+     xy5 = gen_swizzle_functions("xy", 5),
+     xyz5 = gen_swizzle_functions("xyz", 5),
+     xyzw5 = gen_swizzle_functions("xyzw", 5),
+     xyzwv5 = gen_swizzle_functions("xyzwv", 5));
     let mut f = File::create(swizzle_file_path)
         .expect("Unable to create file that defines the swizzle operator macro.");
     f.write_all(data.as_bytes())
