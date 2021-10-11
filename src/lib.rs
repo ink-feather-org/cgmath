@@ -75,13 +75,13 @@ pub use approx::*;
 pub use num::*;
 pub use structure::*;
 
-pub use matrix::{Matrix2, Matrix3, Matrix4};
+pub use matrix::{Matrix2, Matrix3, Matrix4, Matrix5};
 pub use quaternion::Quaternion;
-pub use vector::{dot, vec1, vec2, vec3, vec4, Vector1, Vector2, Vector3, Vector4};
+pub use vector::{dot, vec1, vec2, vec3, vec4, vec5, Vector1, Vector2, Vector3, Vector4, Vector5};
 
 pub use angle::{Deg, Rad};
 pub use euler::Euler;
-pub use point::{point1, point2, point3, Point1, Point2, Point3};
+pub use point::{point1, point2, point3, point4, Point1, Point2, Point3, Point4};
 pub use rotation::*;
 pub use transform::*;
 
